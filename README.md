@@ -34,3 +34,14 @@ This will rescan your codebase, and:
 - Update/upgrade your baseline to be compatible with the latest version,
 - Add any new secrets it finds to your baseline, and remove any secrets no longer in your codebase
 - Preserve any labelled secrets you have.
+
+## Usage
+
+To use this template, do the following:
+
+1. Create a new repository using this template
+2. Clone the new repository
+3. Copy `tfvars-example` to `terraform.tfvars` and update the values as needed. This file is ignored by git so you won't accidentally commit it.
+4. Run `terraform init` to initialize the project
+5. Run `terraform plan` to see what changes will be made
+6. Run `terraform apply` to apply the changes

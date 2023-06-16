@@ -9,6 +9,18 @@ locals {
     }
   }
 
+  frontend_rules = [
+    for r in var.frontend_rules : {
+      name       = r.name
+      direction  = r.direction
+      remote     = lookup(r, "remote", null)
+      ip_version = lookup(r, "ip_version", null)
+      icmp       = lookup(r, "icmp", null)
+      tcp        = lookup(r, "tcp", null)
+      udp        = lookup(r, "udp", null)
+    }
+  ]
+
   tags = [
     "provider:ibm",
     "workspace:${terraform.workspace}",
@@ -55,4 +67,34 @@ resource "null_resource" "create_private_key" {
       chmod 400 ./'${local.prefix}'.pem
     EOT
   }
+}
+
+module "vpc" {
+  source                      = "terraform-ibm-modules/vpc/ibm//modules/vpc"
+  version                     = "1.1.1"
+  create_vpc                  = true
+  vpc_name                    = "${local.prefix}-vpc"
+  resource_group_id           = module.resource_group.resource_group_id
+  classic_access              = var.classic_access
+  default_address_prefix      = var.default_address_prefix
+  default_network_acl_name    = "${local.prefix}-default-network-acl"
+  default_security_group_name = "${local.prefix}-default-security-group"
+  default_routing_table_name  = "${local.prefix}-default-routing-table"
+  vpc_tags                    = local.tags
+  locations                   = [local.vpc_zones[0].zone, local.vpc_zones[1].zone, local.vpc_zones[2].zone]
+  number_of_addresses         = "128"
+  create_gateway              = true
+  subnet_name                 = "${local.prefix}-frontend-subnet"
+  public_gateway_name         = "${local.prefix}-pub-gw"
+  gateway_tags                = local.tags
+}
+
+module "security_group" {
+  source                = "terraform-ibm-modules/vpc/ibm//modules/security-group"
+  version               = "1.1.1"
+  create_security_group = true
+  name                  = "${local.prefix}-frontend-sg"
+  vpc_id                = module.vpc.vpc_id[0]
+  resource_group_id     = module.resource_group.resource_group_id
+  security_group_rules  = local.frontend_rules
 }
