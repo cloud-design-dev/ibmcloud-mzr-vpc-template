@@ -2,7 +2,7 @@
 
 This repository contains a template for creating a new IBM Cloud MZR VPC. It is intended to be used as a starting point for new projects.
 
-![Diagram of deployment](./ibmcloud-mzr-template-base.png)
+![Diagram of deployment](./ibmcloud-mzr-template-bastion.png)
 
 ## Usage
 
