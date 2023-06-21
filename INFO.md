@@ -35,7 +35,6 @@
 |------|-------------|------|---------|:--------:|
 | <a name="input_classic_access"></a> [classic\_access](#input\_classic\_access) | Allow classic access to the VPC. | `bool` | `false` | no |
 | <a name="input_default_address_prefix"></a> [default\_address\_prefix](#input\_default\_address\_prefix) | The address prefix to use for the VPC. Default is set to auto. | `string` | `"auto"` | no |
-| <a name="input_enable_bastion"></a> [enable\_bastion](#input\_enable\_bastion) | n/a | `any` | n/a | yes |
 | <a name="input_existing_cos_instance"></a> [existing\_cos\_instance](#input\_existing\_cos\_instance) | Name of an existing COS instance to use for resources. If not set, a new COS instance will be created. | `string` | n/a | yes |
 | <a name="input_existing_resource_group"></a> [existing\_resource\_group](#input\_existing\_resource\_group) | Name of an existing Resource Group to use for resources. If not set, a new Resource Group will be created. | `string` | n/a | yes |
 | <a name="input_existing_ssh_key"></a> [existing\_ssh\_key](#input\_existing\_ssh\_key) | Name of an existing SSH key in the region. If not set, a new SSH key will be created. | `string` | n/a | yes |

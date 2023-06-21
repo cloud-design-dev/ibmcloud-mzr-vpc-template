@@ -122,7 +122,7 @@ module "cos" {
   bucket_name              = "${local.prefix}-${local.vpc_zones[0].zone}-collector-bucket"
   create_hmac_key          = (var.existing_cos_instance != "" ? false : true)
   create_cos_bucket        = true
-  encryption_enabled       = false
+  kms_encryption_enabled   = false
   hmac_key_name            = (var.existing_cos_instance != "" ? null : "${local.prefix}-hmac-key")
   cos_instance_name        = (var.existing_cos_instance != "" ? null : "${local.prefix}-cos-instance")
   cos_tags                 = local.tags
