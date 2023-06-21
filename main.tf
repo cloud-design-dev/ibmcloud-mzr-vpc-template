@@ -144,5 +144,5 @@ resource "ibm_is_flow_log" "frontend_collector" {
   name           = "${local.prefix}-frontend-subnet-collector"
   target         = module.vpc.subnet_ids[0]
   active         = true
-  storage_bucket = module.cos.bucket_name[0]
+  storage_bucket = module.cos.bucket_name
 }
