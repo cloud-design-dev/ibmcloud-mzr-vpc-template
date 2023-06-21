@@ -12,3 +12,7 @@ data "ibm_resource_instance" "cos" {
   count = var.existing_cos_instance != "" ? 1 : 0
   name  = var.existing_cos_instance
 }
+
+data "ibm_is_image" "base" {
+  name = var.image_name
+}

@@ -106,9 +106,39 @@ module "security_group" {
   security_group_rules  = local.frontend_rules
 }
 
-resource "ibm_is_floating_ip" "example" {
+resource "ibm_is_instance" "bastion" {
+  name           = "${local.prefix}-bastion"
+  vpc            = module.vpc.vpc_id[0]
+  image          = data.ibm_is_image.base.id
+  profile        = var.instance_profile
+  resource_group = module.resource_group.resource_group_id
+
+  metadata_service {
+    enabled            = var.metadata_service_enabled
+    protocol           = "https"
+    response_hop_limit = 5
+  }
+
+  boot_volume {
+    name = "${local.prefix}-bastion-volume"
+  }
+
+  primary_network_interface {
+    subnet            = module.vpc.subnet_ids[0]
+    allow_ip_spoofing = var.allow_ip_spoofing
+    security_groups   = [module.security_group.security_group_id[0]]
+  }
+
+  user_data = file("${path.module}/init.yaml")
+  zone      = local.vpc_zones[0].zone
+  keys      = local.ssh_key_ids
+  tags      = concat(local.tags, ["zone:${local.vpc_zones[0].zone}"])
+}
+
+resource "ibm_is_floating_ip" "frontend" {
   name           = "${local.prefix}-${local.vpc_zones[0].zone}-fip"
-  zone           = local.vpc_zones[0].zone
+  zone           = var.enable_bastion ? null : local.vpc_zones[0].zone
+  target         = var.enable_bastion ? ibm_is_instance.bastion.primary_network_interface[0].id : null
   resource_group = module.resource_group.resource_group_id
   tags           = local.tags
 }
