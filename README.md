@@ -22,7 +22,10 @@ To use this template, do the following:
 - VPC
 - Public Gateway in all 3 regional zones
 - Subnet in all 3 regional zones
-- Frontend Security group allowing `tcp/80`, `tcp/443`, `tcp/22` and `icmp` inbound and `dns udp/53` outbound. 
+- Frontend Security group allowing `tcp/80`, `tcp/443`, `tcp/22` and `icmp` inbound and `dns udp/53` outbound.
+- Cloud Object Storage instance (created if none provided)
+- Cloud Object Storage bucket
+- VPC Flowlogs collector
 
 ## Using pre-commit hooks
 
