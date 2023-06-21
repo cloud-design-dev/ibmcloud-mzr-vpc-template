@@ -1,8 +1,14 @@
 locals {
   prefix      = var.project_prefix != "" ? var.project_prefix : "${random_string.prefix.0.result}"
   ssh_key_ids = var.existing_ssh_key != "" ? [data.ibm_is_ssh_key.sshkey[0].id] : [ibm_is_ssh_key.generated_key[0].id]
+
+  cos_instance = var.existing_cos_instance != "" ? data.ibm_resource_instance.cos.0.id : null
+  cos_guid     = var.existing_cos_instance != "" ? data.ibm_resource_instance.cos.0.guid : substr(trim(trimprefix(module.cos.cos_instance_id, "crn:v1:bluemix:public:cloud-object-storage:global:a/"), "::"), 33, -1)
+
+
   deploy_date = formatdate("YYYYMMDD", timestamp())
-  zones       = length(data.ibm_is_zones.regional.zones)
+
+  zones = length(data.ibm_is_zones.regional.zones)
   vpc_zones = {
     for zone in range(local.zones) : zone => {
       zone = "${var.region}-${zone + 1}"
@@ -40,6 +46,7 @@ resource "random_string" "prefix" {
   length  = 4
   special = false
   upper   = false
+  numeric = false
 }
 
 # Generate a new SSH key if one was not provided
@@ -97,4 +104,45 @@ module "security_group" {
   vpc_id                = module.vpc.vpc_id[0]
   resource_group_id     = module.resource_group.resource_group_id
   security_group_rules  = local.frontend_rules
+}
+
+resource "ibm_is_floating_ip" "example" {
+  name           = "${local.prefix}-${local.vpc_zones[0].zone}-fip"
+  zone           = local.vpc_zones[0].zone
+  resource_group = module.resource_group.resource_group_id
+  tags           = local.tags
+}
+
+module "cos" {
+  create_cos_instance      = var.existing_cos_instance != "" ? false : true
+  depends_on               = [module.vpc]
+  source                   = "git::https://github.com/terraform-ibm-modules/terraform-ibm-cos?ref=v5.3.1"
+  resource_group_id        = module.resource_group.resource_group_id
+  region                   = var.region
+  bucket_name              = "${local.prefix}-${local.vpc_zones[0].zone}-collector-bucket"
+  create_hmac_key          = (var.existing_cos_instance != "" ? false : true)
+  create_cos_bucket        = true
+  encryption_enabled       = false
+  hmac_key_name            = (var.existing_cos_instance != "" ? null : "${local.prefix}-hmac-key")
+  cos_instance_name        = (var.existing_cos_instance != "" ? null : "${local.prefix}-cos-instance")
+  cos_tags                 = local.tags
+  existing_cos_instance_id = (var.existing_cos_instance != "" ? local.cos_instance : null)
+}
+
+resource "ibm_iam_authorization_policy" "cos_flowlogs" {
+  count                       = var.existing_cos_instance != "" ? 0 : 1
+  depends_on                  = [module.cos]
+  source_service_name         = "is"
+  source_resource_type        = "flow-log-collector"
+  target_service_name         = "cloud-object-storage"
+  target_resource_instance_id = local.cos_guid
+  roles                       = ["Writer", "Reader"]
+}
+
+resource "ibm_is_flow_log" "frontend_collector" {
+  depends_on     = [ibm_iam_authorization_policy.cos_flowlogs]
+  name           = "${local.prefix}-frontend-subnet-collector"
+  target         = module.vpc.subnet_ids[0]
+  active         = true
+  storage_bucket = module.cos.bucket_name[0]
 }

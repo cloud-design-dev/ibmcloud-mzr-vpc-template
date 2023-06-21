@@ -30,6 +30,11 @@ variable "default_address_prefix" {
   default     = "auto"
 }
 
+variable "existing_cos_instance" {
+  description = "Name of an existing COS instance to use for resources. If not set, a new COS instance will be created."
+  type        = string
+}
+
 variable "frontend_rules" {
   description = "A list of security group rules to be added to the Frontend security group"
   type = list(

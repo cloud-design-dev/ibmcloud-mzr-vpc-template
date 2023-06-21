@@ -2,6 +2,8 @@
 
 This repository contains a template for creating new Terraform projects for IBM Cloud VPC related deployments. It is intended to be used as a starting point for new projects.
 
+![](./ibmcloud-mzr-template-base.png)
+
 ## pre-commit hooks
 
 The following pre-commit hooks are defined in the `.pre-commit-config.yaml` file:
