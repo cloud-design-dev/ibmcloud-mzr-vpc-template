@@ -12,3 +12,7 @@ existing_resource_group = ""
 # Name of an existing SSH key in the Region.
 # If not set, a new one will be created
 existing_ssh_key = ""
+
+# Name of an existing COS instance.
+# If not set, a new one will be created
+existing_cos_instance = ""
