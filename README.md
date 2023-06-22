@@ -38,19 +38,13 @@ Contains 2 MZR VPCs (workload and management) with public gateways, subnets, sec
 | Frontend Security Group | [ibm_is_security_group](https://registry.terraform.io/providers/IBM-Cloud/ibm/latest/docs/resources/is_security_group) | `all` branches | Frontend Security group allowing `tcp/80`, `tcp/443`, `tcp/22` and `icmp` inbound and `dns udp/53` outbound. |
 | Bastion Host | [ibm_is_instance](https://registry.terraform.io/providers/IBM-Cloud/ibm/latest/docs/resources/is_instance) | `bastion` only | An IBM Cloud compute host to act as a Bastion for the VPC. |
 | VPC SSH Key | [ibm_is_ssh_key](https://registry.terraform.io/providers/IBM-Cloud/ibm/latest/docs/resources/is_ssh_key) | `all` branches | An SSH key that will be added to the region and any deployed hosts. If an existing key is not specified, a new one will be created. |
-| VPC Flowlogs Collector | [ibm_is_flow_log_collector](https://registry.terraform.io/providers/IBM-Cloud/ibm/1.54.0/docs/resources/is_flow_log_collector) | `all` branches | VPC Flow Logs Collector for subnets in each zone. |
+| VPC Flowlogs Collector | [ibm_is_flow_log_collector](https://registry.terraform.io/providers/IBM-Cloud/ibm/latest/docs/resources/is_flow_log_collector) | `all` branches | VPC Flow Logs Collector for subnets in each zone. |
 | Cloud Object Storage  | [ibm_resource_instance](https://registry.terraform.io/providers/IBM-Cloud/ibm/latest/docs/resources/resource_instance) | `all` branches | Cloud Object Storage instance. If an existing instance is not specified, a new one will be created. |
-| Cloud Object Storage Bucket  | [ibm_cos_bucket](https://registry.terraform.io/providers/IBM-Cloud/ibm/latest/docs/resources/cos_bucket) | `all` branches | Cloud Object Storage bucket for Flow Logs. | 
-| IAM Service Authorization | [ibm_iam_authorization_policy](https://registry.terraform.io/providers/IBM-Cloud/ibm/1.54.0/docs/resources/iam_authorization_policy) | `all` branches | IAM Service Authorization for the VPC Flow Logs Collector to write to Object Storage instance. |
+| Cloud Object Storage Bucket  | [ibm_cos_bucket](https://registry.terraform.io/providers/IBM-Cloud/ibm/latest/docs/resources/cos_bucket) | `all` branches | Cloud Object Storage bucket for Flow Logs. |
+| IAM Service Authorization | [ibm_iam_authorization_policy](https://registry.terraform.io/providers/IBM-Cloud/ibm/latest/docs/resources/iam_authorization_policy) | `all` branches | IAM Service Authorization for the VPC Flow Logs Collector to write to Object Storage instance. |
+| VPC VPN Gateway | [ibm_is_vpn_gateway](https://registry.terraform.io/providers/IBM-Cloud/ibm/latest/docs/resources/is_vpn_gateway) | `landing-zone` only | Site-to-Site VPN Gateway. |
+| Transit Gateway | [ibm_is_vpn_gateway](https://registry.terraform.io/providers/IBM-Cloud/ibm/latest/docs/resources/is_vpn_gateway) | `landing-zone` only | Transit Gateway to interconnect the workload and management VPCs. |
 
 ## Usage
 
-To use this template, do the following:
-
-1. Create a new repository using this template
-2. Clone the new repository
-3. Select the branch you want to use `git checkout <branch>`
-4. Copy `tfvars-example` to `terraform.tfvars` and update the values as needed. See [here](https://github.com/cloud-design-dev/ibmcloud-mzr-vpc-template/blob/main/INFO.md#inputs) for full list of variables.
-5. Run `terraform init` to initialize the project
-6. Run `terraform plan` to see what changes will be made
-7. Run `terraform apply` to apply the changes
+See [Wiki](https://github.com/cloud-design-dev/ibmcloud-mzr-vpc-template/wiki) for usage instructions.
