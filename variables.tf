@@ -27,7 +27,7 @@ variable "classic_access" {
 variable "default_address_prefix" {
   description = "The address prefix to use for the VPC. Default is set to auto."
   type        = string
-  default     = "auto"
+  default     = "manual"
 }
 
 variable "existing_cos_instance" {
@@ -36,11 +36,39 @@ variable "existing_cos_instance" {
 }
 
 variable "management_address_prefix" {
-  default = "172.16.0.0/18"
+  description = "The address prefix to use for the management subnet. Default is set to 172.16.0.0/18"
+  type        = string
+  default     = "172.16.0.0/18"
 }
 
 variable "workload_address_prefix" {
-  default = "192.168.0.0/18"
+  description = "The address prefix to use for the workload subnet. Default is set to 192.168.0.0/18"
+  type        = string
+  default     = "192.168.0.0/18"
+}
+
+variable "instance_profile" {
+  description = "The profile to use for the bastion host."
+  type        = string
+  default     = "cx2-2x4"
+}
+
+variable "image_name" {
+  description = "The name of the image to use for the bastion host."
+  type        = string
+  default     = "ibm-ubuntu-22-04-2-minimal-amd64-1"
+}
+
+variable "metadata_service_enabled" {
+  description = "Enable metadata service for the bastion host."
+  type        = bool
+  default     = true
+}
+
+variable "allow_ip_spoofing" {
+  description = "Allow IP spoofing for the bastion host."
+  type        = bool
+  default     = false
 }
 
 

@@ -9,6 +9,7 @@ locals {
   deploy_date = formatdate("YYYYMMDD", timestamp())
 
   zones = length(data.ibm_is_zones.regional.zones)
+
   vpc_zones = {
     for zone in range(local.zones) : zone => {
       zone = "${var.region}-${zone + 1}"
@@ -76,50 +77,110 @@ resource "null_resource" "create_private_key" {
   }
 }
 
-module "vpc" {
-  source                      = "terraform-ibm-modules/vpc/ibm//modules/vpc"
-  version                     = "1.1.1"
-  create_vpc                  = true
-  vpc_name                    = "${local.prefix}-vpc"
-  resource_group_id           = module.resource_group.resource_group_id
-  classic_access              = var.classic_access
-  default_address_prefix      = var.default_address_prefix
-  default_network_acl_name    = "${local.prefix}-default-network-acl"
-  default_security_group_name = "${local.prefix}-default-security-group"
-  default_routing_table_name  = "${local.prefix}-default-routing-table"
-  vpc_tags                    = local.tags
-  locations                   = [local.vpc_zones[0].zone, local.vpc_zones[1].zone, local.vpc_zones[2].zone]
-  number_of_addresses         = "128"
-  create_gateway              = true
-  subnet_name                 = "${local.prefix}-frontend-subnet"
-  public_gateway_name         = "${local.prefix}-pub-gw"
-  gateway_tags                = local.tags
+module "workload_vpc" {
+  source                 = "./modules/vpc"
+  vpc_name               = "${local.prefix}-wrk-vpc"
+  default_address_prefix = "manual"
+  resource_group_id      = module.resource_group.resource_group_id
+  default_cidr           = var.workload_address_prefix
+  tags                   = concat(local.tags, ["environment:workload"])
+  zones                  = [local.vpc_zones[0].zone, local.vpc_zones[1].zone, local.vpc_zones[2].zone]
+}
+
+module "mgmt_vpc" {
+  source                 = "./modules/vpc"
+  vpc_name               = "${local.prefix}-mgmt-vpc"
+  default_address_prefix = "manual"
+  resource_group_id      = module.resource_group.resource_group_id
+  default_cidr           = var.management_address_prefix
+  tags                   = concat(local.tags, ["environment:management"])
+  network_acl            = ibm_is_network_acl.workload.id
+  zones                  = [local.vpc_zones[0].zone, local.vpc_zones[1].zone, local.vpc_zones[2].zone]
 }
 
 module "security_group" {
   source                = "terraform-ibm-modules/vpc/ibm//modules/security-group"
   version               = "1.1.1"
   create_security_group = true
-  name                  = "${local.prefix}-frontend-sg"
-  vpc_id                = module.vpc.vpc_id[0]
+  name                  = "${local.prefix}-mgmt-frontend-sg"
+  vpc_id                = module.mgmt_vpc.vpc_id
   resource_group_id     = module.resource_group.resource_group_id
   security_group_rules  = local.frontend_rules
 }
 
-resource "ibm_is_floating_ip" "example" {
-  name           = "${local.prefix}-${local.vpc_zones[0].zone}-fip"
-  zone           = local.vpc_zones[0].zone
+resource "ibm_is_instance" "bastion" {
+  name           = "${local.prefix}-bastion"
+  vpc            = module.mgmt_vpc.vpc_id
+  image          = data.ibm_is_image.base.id
+  profile        = var.instance_profile
+  resource_group = module.resource_group.resource_group_id
+
+  metadata_service {
+    enabled            = var.metadata_service_enabled
+    protocol           = "https"
+    response_hop_limit = 5
+  }
+
+  boot_volume {
+    name = "${local.prefix}-bastion-volume"
+  }
+
+  primary_network_interface {
+    subnet            = module.mgmt_vpc.subnet_ids[0]
+    allow_ip_spoofing = var.allow_ip_spoofing
+    security_groups   = [module.security_group.security_group_id[0]]
+  }
+
+  user_data = file("${path.module}/init.yaml")
+  zone      = local.vpc_zones[0].zone
+  keys      = local.ssh_key_ids
+  tags      = concat(local.tags, ["zone:${local.vpc_zones[0].zone}"])
+}
+
+resource "ibm_is_floating_ip" "frontend" {
+  name = "${local.prefix}-${local.vpc_zones[0].zone}-fip"
+  # zone           = var.enable_bastion ? null : local.vpc_zones[0].zone
+  target = ibm_is_instance.bastion.primary_network_interface[0].id
+  # target         = var.enable_bastion ? ibm_is_instance.bastion.primary_network_interface[0].id : null
   resource_group = module.resource_group.resource_group_id
   tags           = local.tags
 }
 
+resource "ibm_is_instance" "worker" {
+  name           = "${local.prefix}-worker"
+  vpc            = module.workload_vpc.vpc_id
+  image          = data.ibm_is_image.base.id
+  profile        = var.instance_profile
+  resource_group = module.resource_group.resource_group_id
+
+  metadata_service {
+    enabled            = var.metadata_service_enabled
+    protocol           = "https"
+    response_hop_limit = 5
+  }
+
+  boot_volume {
+    name = "${local.prefix}-worker-volume"
+  }
+
+  primary_network_interface {
+    subnet            = module.workload_vpc.subnet_ids[0]
+    allow_ip_spoofing = var.allow_ip_spoofing
+    security_groups   = [module.workload_vpc.default_security_group]
+  }
+
+  user_data = file("${path.module}/init.yaml")
+  zone      = local.vpc_zones[0].zone
+  keys      = local.ssh_key_ids
+  tags      = concat(local.tags, ["zone:${local.vpc_zones[0].zone}"])
+}
+
 module "cos" {
   create_cos_instance      = var.existing_cos_instance != "" ? false : true
-  depends_on               = [module.vpc]
   source                   = "git::https://github.com/terraform-ibm-modules/terraform-ibm-cos?ref=v6.7.0"
   resource_group_id        = module.resource_group.resource_group_id
   region                   = var.region
-  bucket_name              = "${local.prefix}-${local.vpc_zones[0].zone}-collector-bucket"
+  bucket_name              = "${local.prefix}-mgmt-collector-bucket"
   create_hmac_key          = (var.existing_cos_instance != "" ? false : true)
   create_cos_bucket        = true
   kms_encryption_enabled   = false
@@ -127,6 +188,21 @@ module "cos" {
   cos_instance_name        = (var.existing_cos_instance != "" ? null : "${local.prefix}-cos-instance")
   cos_tags                 = local.tags
   existing_cos_instance_id = (var.existing_cos_instance != "" ? local.cos_instance : null)
+}
+
+module "workload_cos_bucket" {
+  source                   = "git::https://github.com/terraform-ibm-modules/terraform-ibm-cos?ref=v6.7.0"
+  bucket_name              = "${local.prefix}-workload-collector-bucket"
+  create_cos_instance      = false
+  resource_group_id        = module.resource_group.resource_group_id
+  region                   = var.region
+  create_hmac_key          = false
+  create_cos_bucket        = true
+  kms_encryption_enabled   = false
+  hmac_key_name            = null
+  cos_instance_name        = null
+  cos_tags                 = local.tags
+  existing_cos_instance_id = local.cos_instance
 }
 
 resource "ibm_iam_authorization_policy" "cos_flowlogs" {
@@ -139,10 +215,39 @@ resource "ibm_iam_authorization_policy" "cos_flowlogs" {
   roles                       = ["Writer", "Reader"]
 }
 
-resource "ibm_is_flow_log" "frontend_collector" {
+resource "ibm_is_flow_log" "mgmt_frontend_collector" {
   depends_on     = [ibm_iam_authorization_policy.cos_flowlogs]
-  name           = "${local.prefix}-frontend-subnet-collector"
-  target         = module.vpc.subnet_ids[0]
+  name           = "${local.prefix}-mgmt-frontend-subnet-collector"
+  target         = module.mgmt_vpc.vpc_id
   active         = true
   storage_bucket = module.cos.bucket_name
+}
+
+resource "ibm_is_flow_log" "workload_frontend_collector" {
+  depends_on     = [ibm_iam_authorization_policy.cos_flowlogs]
+  name           = "${local.prefix}-mgmt-frontend-subnet-collector"
+  target         = module.workload_vpc.vpc_id
+  active         = true
+  storage_bucket = module.workload_cos_bucket.bucket_name
+}
+
+resource "ibm_tg_gateway" "management" {
+  name           = "${local.prefix}-mgmt-tgw"
+  location       = var.region
+  global         = true
+  resource_group = module.resource_group.resource_group_id
+}
+
+resource "ibm_tg_connection" "management" {
+  gateway      = ibm_tg_gateway.management.id
+  network_type = "vpc"
+  name         = "${local.prefix}-mgmt-connection"
+  network_id   = module.mgmt_vpc.vpc_crn
+}
+
+resource "ibm_tg_connection" "workload" {
+  gateway      = ibm_tg_gateway.management.id
+  network_type = "vpc"
+  name         = "${local.prefix}-wrkld-connection"
+  network_id   = module.workload_vpc.vpc_crn
 }
