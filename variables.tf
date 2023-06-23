@@ -35,6 +35,15 @@ variable "existing_cos_instance" {
   type        = string
 }
 
+variable "management_address_prefix" {
+  default = "172.16.0.0/18"
+}
+
+variable "workload_address_prefix" {
+  default = "192.168.0.0/18"
+}
+
+
 variable "frontend_rules" {
   description = "A list of security group rules to be added to the Frontend security group"
   type = list(
