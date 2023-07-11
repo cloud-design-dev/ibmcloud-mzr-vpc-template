@@ -11,6 +11,7 @@ variable "region" {
 variable "project_prefix" {
   description = "Prefix to use for resource names"
   type        = string
+default = ""
 }
 
 variable "existing_ssh_key" {
