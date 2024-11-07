@@ -3,10 +3,7 @@ locals {
   ssh_key_ids = var.existing_ssh_key != "" ? [data.ibm_is_ssh_key.sshkey[0].id] : [ibm_is_ssh_key.generated_key[0].id]
 
   cos_instance = var.existing_cos_instance != "" ? data.ibm_resource_instance.cos.0.id : null
-  cos_guid     = var.existing_cos_instance != "" ? data.ibm_resource_instance.cos.0.guid : substr(trim(trimprefix(module.cos.cos_instance_id, "crn:v1:bluemix:public:cloud-object-storage:global:a/"), "::"), 33, -1)
-
-
-  deploy_date = formatdate("YYYYMMDD", timestamp())
+  cos_guid          = var.existing_cos_instance != "" ? data.ibm_resource_instance.cos.0.guid : module.cos.cos_instance_guid
 
   zones = length(data.ibm_is_zones.regional.zones)
   vpc_zones = {
